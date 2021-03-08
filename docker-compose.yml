@@ -1,0 +1,125 @@
+version: "3.7"
+
+services: 
+  mysql-manager:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    image: mycluster8
+    restart: always
+    networks:
+      mynetcluster:
+        ipv4_address: 10.0.0.2
+    container_name: manager
+    command: ndb_mgmd --ndb-nodeid=1
+
+  data-node-1:
+    image: mycluster8
+    depends_on: 
+      - mysql-manager
+    restart: always
+    networks:
+      mynetcluster:
+        ipv4_address: 10.0.0.3
+    container_name: datanode1
+    volumes:
+      - cluster_data_vol:/var/lib/mysql
+    command: ndbd --ndb-nodeid=2
+
+  data-node-2:
+    image: mycluster8
+    depends_on: 
+      - mysql-manager
+    restart: always
+    networks:
+      mynetcluster:
+        ipv4_address: 10.0.0.4
+    container_name: datanode2
+    volumes:
+      - cluster_data_vol:/var/lib/mysql
+    command: ndbd --ndb-nodeid=3
+
+  mysql1:
+    image: mycluster8
+    depends_on: 
+      - mysql-manager
+    restart: always
+    container_name: mysql81
+    networks:
+      mynetcluster:
+        ipv4_address: 10.0.0.10
+    environment: 
+      MYSQL_ROOT_PASSWORD: wordpressdocker
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpresspwd
+    command: mysqld
+
+  mysql2:
+    image: mycluster8
+    depends_on: 
+      - mysql-manager
+    restart: always
+    container_name: mysql82
+    networks:
+      mynetcluster:
+        ipv4_address: 10.0.0.11
+    environment: 
+      MYSQL_ROOT_PASSWORD: wordpressdocker
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpresspwd
+    command: mysqld
+
+  wordpress1:
+     depends_on:
+       - mysql1
+     image: wordpress:latest
+     ports:
+       - "5002:80"
+     restart: always
+     container_name: wordpress1
+     networks:
+      mynetcluster:
+        ipv4_address: 10.0.0.15
+     environment:
+       WORDPRESS_DB_HOST: 10.0.0.10
+       WORDPRESS_DB_NAME: wordpress
+       WORDPRESS_DB_USER: wordpress
+       WORDPRESS_DB_PASSWORD: wordpresspwd
+
+  wordpress2:
+     depends_on:
+       - mysql2
+     image: wordpress:latest
+     ports:
+       - "5001:80"
+     restart: always
+     container_name: wordpress2
+     networks:
+      mynetcluster:
+        ipv4_address: 10.0.0.16
+     environment:
+       WORDPRESS_DB_HOST: 10.0.0.11
+       WORDPRESS_DB_NAME: wordpress
+       WORDPRESS_DB_USER: wordpress
+       WORDPRESS_DB_PASSWORD: wordpresspwd
+  
+#  nginx:
+#    build: ./nginx
+#    ports: 
+#      - "8080:80"
+#    container_name: nginx
+#    depends_on: 
+#      - wordpress1
+#      - wordpress2   
+
+networks:
+  mynetcluster:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.0.0.0/16
+
+volumes:
+  cluster_data_vol:
