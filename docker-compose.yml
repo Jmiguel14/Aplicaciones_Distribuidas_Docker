@@ -76,13 +76,13 @@ services:
        - mysql1
      image: wordpress:latest
      ports:
-       - "5002:80"
+       - "5001:80"
      restart: always
      container_name: wordpress1
      networks:
       mynetcluster:
-        ipv4_address: 10.0.0.15
      environment:
+       VIRTUAL_HOST: blog.wordpress1.com
        WORDPRESS_DB_HOST: 10.0.0.10
        WORDPRESS_DB_NAME: wordpress
        WORDPRESS_DB_USER: wordpress
@@ -93,33 +93,39 @@ services:
        - mysql2
      image: wordpress:latest
      ports:
-       - "5001:80"
+       - "5002:80"
      restart: always
      container_name: wordpress2
      networks:
       mynetcluster:
-        ipv4_address: 10.0.0.16
      environment:
+       VIRTUAL_HOST: blog.wordpress2.com
        WORDPRESS_DB_HOST: 10.0.0.11
        WORDPRESS_DB_NAME: wordpress
        WORDPRESS_DB_USER: wordpress
        WORDPRESS_DB_PASSWORD: wordpresspwd
   
-#  nginx:
-#    build: ./nginx
-#    ports: 
-#      - "8080:80"
-#    container_name: nginx
-#    depends_on: 
-#      - wordpress1
-#      - wordpress2   
+  nginx:
+    build: ./nginx
+    image: nginx
+    ports: 
+      - "84:80"
+    container_name: nginx
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+    networks:
+      mynetcluster:
+    depends_on: 
+      - wordpress1
+      - wordpress2   
 
 networks:
   mynetcluster:
     driver: bridge
     ipam:
      config:
-       - subnet: 10.0.0.0/16
+       - subnet: 10.0.0.0/8
+         gateway: 10.0.0.1
 
 volumes:
   cluster_data_vol:
